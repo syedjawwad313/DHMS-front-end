@@ -253,6 +253,12 @@ export default function AdminDashboard() {
       registrar: 'Namecheap',
       purchase_date: today,
       expiry_date: nextYearStr,
+      domain_cost: '12.99',
+      has_hosting: false,
+      hosting_registrar: 'Hostinger',
+      hosting_purchase_date: today,
+      hosting_expiry_date: nextYearStr,
+      hosting_cost: '5.00',
     });
     setFormError('');
     setIsDomainModalOpen(true);
@@ -260,13 +266,24 @@ export default function AdminDashboard() {
 
   // Open Edit Domain Modal
   const handleOpenEditDomain = (domain) => {
+    const today = new Date().toISOString().split('T')[0];
+    const nextYear = new Date();
+    nextYear.setFullYear(nextYear.getFullYear() + 1);
+    const nextYearStr = nextYear.toISOString().split('T')[0];
+
     setEditingDomain(domain);
     setDomainForm({
       user_id: domain.user_id,
       domain_name: domain.domain_name,
       registrar: domain.registrar || 'Namecheap',
-      purchase_date: domain.purchase_date ? domain.purchase_date.split('T')[0] : '',
-      expiry_date: domain.expiry_date ? domain.expiry_date.split('T')[0] : '',
+      purchase_date: domain.purchase_date ? domain.purchase_date.split('T')[0] : today,
+      expiry_date: domain.expiry_date ? domain.expiry_date.split('T')[0] : nextYearStr,
+      domain_cost: domain.domain_cost !== undefined && domain.domain_cost !== null ? String(domain.domain_cost) : '0.00',
+      has_hosting: Boolean(domain.has_hosting),
+      hosting_registrar: domain.hosting_registrar || 'Hostinger',
+      hosting_purchase_date: domain.hosting_purchase_date ? domain.hosting_purchase_date.split('T')[0] : today,
+      hosting_expiry_date: domain.hosting_expiry_date ? domain.hosting_expiry_date.split('T')[0] : nextYearStr,
+      hosting_cost: domain.hosting_cost !== undefined && domain.hosting_cost !== null ? String(domain.hosting_cost) : '0.00',
     });
     setFormError('');
     setIsDomainModalOpen(true);
@@ -698,11 +715,11 @@ export default function AdminDashboard() {
                     <tr>
                       <th className="px-6 py-4">DOMAIN NAME</th>
                       <th className="px-6 py-4">OWNER (USER EMAIL)</th>
-                      <th className="px-6 py-4">REGISTRAR</th>
+                      <th className="px-6 py-4">REGISTRAR &amp; COST</th>
                       <th className="px-6 py-4">PURCHASE DATE</th>
                       <th className="px-6 py-4">EXPIRY DATE</th>
                       <th className="px-6 py-4">STATUS</th>
-                      <th className="px-6 py-4">ATTACHED HOSTING</th>
+                      <th className="px-6 py-4">HOSTING INFRASTRUCTURE</th>
                       <th className="px-6 py-4 text-right">ADMIN ACTIONS</th>
                     </tr>
                   </thead>
@@ -728,7 +745,18 @@ export default function AdminDashboard() {
                               {d.user_email}
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-slate-700 dark:text-slate-300 align-middle">{d.registrar}</td>
+                          <td className="px-6 py-4 align-middle">
+                            <div className="flex items-center gap-2">
+                              <span className="text-slate-800 dark:text-slate-200 font-medium">{d.registrar}</span>
+                              {d.domain_cost !== undefined && d.domain_cost !== null && parseFloat(d.domain_cost) > 0 ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 font-mono">
+                                  ${parseFloat(d.domain_cost).toFixed(2)}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-slate-400 font-mono">$0.00</span>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-6 py-4 font-mono text-slate-500 dark:text-slate-400 align-middle">
                             {d.purchase_date ? new Date(d.purchase_date).toLocaleDateString() : '—'}
                           </td>
@@ -739,7 +767,15 @@ export default function AdminDashboard() {
                             <StatusBadge status={d.status} />
                           </td>
                           <td className="px-6 py-4 align-middle">
-                            {d.plan_name ? (
+                            {d.has_hosting ? (
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
+                                <Server className="w-3.5 h-3.5 text-indigo-500" />
+                                <span>{d.hosting_registrar || 'Active Host'}</span>
+                                {d.hosting_cost !== undefined && parseFloat(d.hosting_cost) > 0 && (
+                                  <span className="text-[10px] opacity-80 font-mono">(${parseFloat(d.hosting_cost).toFixed(2)}/mo)</span>
+                                )}
+                              </div>
+                            ) : d.plan_name ? (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30">
                                 <Server className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                                 {d.plan_name} (${d.price_monthly}/mo)
@@ -1198,11 +1234,11 @@ export default function AdminDashboard() {
               />
             </div>
 
-            {/* Domain Purchase & Expiry Section */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            {/* Domain Purchase, Expiry & Cost Section */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Domain Purchase Date
+                  Purchase Date
                 </label>
                 <input
                   type="date"
@@ -1216,7 +1252,7 @@ export default function AdminDashboard() {
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Domain Expiry Date
+                    Expiry Date
                   </label>
                   <button
                     type="button"
@@ -1238,7 +1274,149 @@ export default function AdminDashboard() {
                   className="w-full px-3.5 py-2 bg-slate-50 dark:bg-[#080c14] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none"
                 />
               </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Domain Cost ($ USD)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    placeholder="12.99"
+                    value={domainForm.domain_cost}
+                    onChange={(e) => setDomainForm({ ...domainForm, domain_cost: e.target.value })}
+                    className="w-full pl-7 pr-3.5 py-2 bg-slate-50 dark:bg-[#080c14] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none font-mono"
+                  />
+                </div>
+              </div>
             </div>
+
+            {/* Hosting Option Dropdown */}
+            <div className="space-y-1 pt-2">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Include Hosting Plan?
+              </label>
+              <select
+                value={domainForm.has_hosting ? 'yes' : 'no'}
+                onChange={(e) => setDomainForm({ ...domainForm, has_hosting: e.target.value === 'yes' })}
+                className="w-full px-3.5 py-2 bg-slate-50 dark:bg-[#080c14] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none font-medium"
+              >
+                <option value="no">No — Domain Only</option>
+                <option value="yes">Yes — Attach Hosting Package</option>
+              </select>
+            </div>
+
+            {/* Conditional Hosting Container */}
+            {domainForm.has_hosting && (
+              <div className="p-4 bg-slate-50 dark:bg-[#060a12] rounded-2xl border border-blue-200 dark:border-blue-500/30 space-y-3.5 mt-3 animate-slide-up shadow-sm">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Server className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">Hosting Infrastructure Specs</span>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-mono">
+                    ACTIVE HOST
+                  </span>
+                </div>
+
+                {/* Hosting Registrar / Provider */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Hosting Registrar / Provider
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-mono">Quick select</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {['Hostinger', 'AWS', 'Vercel', 'DigitalOcean', 'Bluehost', 'Cloudflare'].map((host) => (
+                      <button
+                        key={host}
+                        type="button"
+                        onClick={() => setDomainForm({ ...domainForm, hosting_registrar: host })}
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all ${
+                          domainForm.hosting_registrar === host
+                            ? 'bg-blue-600 text-white shadow-sm font-bold'
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        {host}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    required={domainForm.has_hosting}
+                    placeholder="e.g. Hostinger, AWS, DigitalOcean, Vercel"
+                    value={domainForm.hosting_registrar}
+                    onChange={(e) => setDomainForm({ ...domainForm, hosting_registrar: e.target.value })}
+                    className="w-full px-3.5 py-2 bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none"
+                  />
+                </div>
+
+                {/* Hosting Purchase, Expiry, Cost */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Hosting Purchase Date
+                    </label>
+                    <input
+                      type="date"
+                      required={domainForm.has_hosting}
+                      value={domainForm.hosting_purchase_date}
+                      onChange={(e) => setDomainForm({ ...domainForm, hosting_purchase_date: e.target.value })}
+                      className="w-full px-3.5 py-2 bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Hosting Expiry Date
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const base = domainForm.hosting_purchase_date ? new Date(domainForm.hosting_purchase_date) : new Date();
+                          base.setFullYear(base.getFullYear() + 1);
+                          setDomainForm({ ...domainForm, hosting_expiry_date: base.toISOString().split('T')[0] });
+                        }}
+                        className="text-[10px] text-blue-600 dark:text-blue-400 font-bold hover:underline"
+                      >
+                        +1 Year
+                      </button>
+                    </div>
+                    <input
+                      type="date"
+                      required={domainForm.has_hosting}
+                      value={domainForm.hosting_expiry_date}
+                      onChange={(e) => setDomainForm({ ...domainForm, hosting_expiry_date: e.target.value })}
+                      className="w-full px-3.5 py-2 bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Hosting Cost ($ USD)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        placeholder="5.00"
+                        value={domainForm.hosting_cost}
+                        onChange={(e) => setDomainForm({ ...domainForm, hosting_cost: e.target.value })}
+                        className="w-full pl-7 pr-3.5 py-2 bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="pt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
               {editingDomain ? (

@@ -31,6 +31,7 @@ import {
   TrendingUp,
   Activity,
   Zap,
+  AlertTriangle,
 } from 'lucide-react';
 import { StatusBadge, RoleBadge } from '../../components/Badge';
 import Modal from '../../components/Modal';
@@ -79,6 +80,12 @@ export default function AdminDashboard() {
     registrar: 'Namecheap',
     purchase_date: '',
     expiry_date: '',
+    domain_cost: '12.99',
+    has_hosting: false,
+    hosting_registrar: 'Hostinger',
+    hosting_purchase_date: '',
+    hosting_expiry_date: '',
+    hosting_cost: '5.00',
   });
 
   // Modal state for Admin Attach Hosting
@@ -88,6 +95,11 @@ export default function AdminDashboard() {
     domain_id: '',
     plan_id: '',
   });
+
+  // Modal state for Delete User Confirmation
+  const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [deleteUserLoading, setDeleteUserLoading] = useState(false);
 
   const [actionLoading, setActionLoading] = useState(false);
   const [formError, setFormError] = useState('');
@@ -380,6 +392,28 @@ export default function AdminDashboard() {
       });
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  // Delete User with Cascading (Admin only)
+  const handleConfirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    setDeleteUserLoading(true);
+    try {
+      const res = await api.delete(`/admin/users/${userToDelete.id}`);
+      if (res.data?.success) {
+        setToast({ type: 'success', message: res.data.message || 'User deleted successfully.' });
+        setIsDeleteUserModalOpen(false);
+        setUserToDelete(null);
+        fetchAdminData();
+      }
+    } catch (err) {
+      setToast({
+        type: 'error',
+        message: err.response?.data?.message || 'Failed to delete user account.',
+      });
+    } finally {
+      setDeleteUserLoading(false);
     }
   };
 
@@ -845,33 +879,56 @@ export default function AdminDashboard() {
                       <th className="px-6 py-4">DOMAINS OWNED</th>
                       <th className="px-6 py-4">ACTIVE HOSTING SUBS</th>
                       <th className="px-6 py-4">REGISTERED DATE</th>
+                      <th className="px-6 py-4 text-right">ACTIONS</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {filteredUsers.map((u) => (
-                      <tr key={u.id} className="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                        <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white align-middle">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xs uppercase font-mono shadow-sm">
-                              {u.email?.charAt(0) || 'U'}
+                    {filteredUsers.map((u) => {
+                      const isSelf = u.id === user?.id || u.email === user?.email;
+                      return (
+                        <tr key={u.id} className="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white align-middle">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xs uppercase font-mono shadow-sm">
+                                {u.email?.charAt(0) || 'U'}
+                              </div>
+                              <span className="font-mono text-slate-900 dark:text-slate-100">{u.email}</span>
                             </div>
-                            <span className="font-mono text-slate-900 dark:text-slate-100">{u.email}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 align-middle">
-                          <RoleBadge role={u.role} />
-                        </td>
-                        <td className="px-6 py-4 font-mono font-bold text-blue-600 dark:text-blue-300 align-middle">
-                          {u.domain_count}
-                        </td>
-                        <td className="px-6 py-4 font-mono font-bold text-cyan-600 dark:text-cyan-300 align-middle">
-                          {u.subscription_count}
-                        </td>
-                        <td className="px-6 py-4 font-mono text-slate-500 dark:text-slate-400 align-middle">
-                          {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-6 py-4 align-middle">
+                            <RoleBadge role={u.role} />
+                          </td>
+                          <td className="px-6 py-4 font-mono font-bold text-blue-600 dark:text-blue-300 align-middle">
+                            {u.domain_count}
+                          </td>
+                          <td className="px-6 py-4 font-mono font-bold text-cyan-600 dark:text-cyan-300 align-middle">
+                            {u.subscription_count}
+                          </td>
+                          <td className="px-6 py-4 font-mono text-slate-500 dark:text-slate-400 align-middle">
+                            {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
+                          </td>
+                          <td className="px-6 py-4 text-right align-middle">
+                            {isSelf ? (
+                              <span className="px-2.5 py-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 rounded-lg border border-blue-200 dark:border-blue-500/30 font-mono">
+                                Current Admin
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setUserToDelete(u);
+                                  setIsDeleteUserModalOpen(true);
+                                }}
+                                className="p-2 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all inline-flex items-center gap-1.5 text-xs font-bold"
+                                title={`Delete user ${u.email}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                <span className="hidden sm:inline">Delete User</span>
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1506,6 +1563,53 @@ export default function AdminDashboard() {
               </button>
             </div>
           </form>
+        </Modal>
+
+        {/* Modal: Delete User Account Confirmation */}
+        <Modal
+          isOpen={isDeleteUserModalOpen}
+          onClose={() => {
+            if (!deleteUserLoading) {
+              setIsDeleteUserModalOpen(false);
+              setUserToDelete(null);
+            }
+          }}
+          title="Delete User Account"
+        >
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-500/30 text-xs text-rose-800 dark:text-rose-200 space-y-2">
+              <div className="font-bold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                <span>Permanent Cascading Deletion</span>
+              </div>
+              <p className="leading-relaxed">
+                Are you sure you want to delete <strong className="font-mono text-slate-900 dark:text-white font-bold">{userToDelete?.email}</strong>? This action will permanently remove the user and all their registered domains and hosting subscriptions.
+              </p>
+            </div>
+
+            <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={deleteUserLoading}
+                onClick={() => {
+                  setIsDeleteUserModalOpen(false);
+                  setUserToDelete(null);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteUserLoading}
+                onClick={handleConfirmDeleteUser}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-500/25 flex items-center gap-1.5 transition-all"
+              >
+                {deleteUserLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>Confirm Delete</span>
+              </button>
+            </div>
+          </div>
         </Modal>
       </div>
     </AdminRoute>

@@ -1161,25 +1161,49 @@ export default function AdminDashboard() {
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Registrar</label>
-              <select
+            {/* Domain Registrar */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Domain Registrar
+                </label>
+                <span className="text-[10px] text-slate-400 font-mono">Select or type custom</span>
+              </div>
+
+              {/* Quick Registrar Selector Pills */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {['Namecheap', 'GoDaddy', 'Cloudflare', 'Google Domains', 'Hostinger', 'Route53', 'Porkbun', 'Dynadot'].map((reg) => (
+                  <button
+                    key={reg}
+                    type="button"
+                    onClick={() => setDomainForm({ ...domainForm, registrar: reg })}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                      domainForm.registrar === reg
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {reg}
+                  </button>
+                ))}
+              </div>
+
+              <input
+                type="text"
+                required
+                placeholder="Registrar Name (e.g. Namecheap, Cloudflare, Custom)"
                 value={domainForm.registrar}
                 onChange={(e) => setDomainForm({ ...domainForm, registrar: e.target.value })}
-                className="w-full px-3.5 py-2 bg-slate-50 dark:bg-[#080c14] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none"
-              >
-                <option value="Namecheap">Namecheap</option>
-                <option value="GoDaddy">GoDaddy</option>
-                <option value="Google Domains">Google Domains</option>
-                <option value="Cloudflare">Cloudflare</option>
-                <option value="Hostinger">Hostinger</option>
-                <option value="Route53">AWS Route53</option>
-              </select>
+                className="w-full px-3.5 py-2 bg-slate-50 dark:bg-[#080c14] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none"
+              />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* Domain Purchase & Expiry Section */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Purchase Date</label>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Domain Purchase Date
+                </label>
                 <input
                   type="date"
                   required
@@ -1190,7 +1214,22 @@ export default function AdminDashboard() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Expiry Date</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Domain Expiry Date
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const base = domainForm.purchase_date ? new Date(domainForm.purchase_date) : new Date();
+                      base.setFullYear(base.getFullYear() + 1);
+                      setDomainForm({ ...domainForm, expiry_date: base.toISOString().split('T')[0] });
+                    }}
+                    className="text-[10px] text-blue-600 dark:text-blue-400 font-bold hover:underline"
+                  >
+                    +1 Year
+                  </button>
+                </div>
                 <input
                   type="date"
                   required

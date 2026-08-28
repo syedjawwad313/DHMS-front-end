@@ -32,6 +32,9 @@ import {
   Activity,
   Zap,
   AlertTriangle,
+  UserPlus,
+  ShieldAlert,
+  Ban,
 } from 'lucide-react';
 import { StatusBadge, RoleBadge } from '../../components/Badge';
 import Modal from '../../components/Modal';
@@ -95,6 +98,16 @@ export default function AdminDashboard() {
     domain_id: '',
     plan_id: '',
   });
+
+  // Modal state for Provision New User
+  const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
+  const [createUserForm, setCreateUserForm] = useState({
+    email: '',
+    password: '',
+    role: 'user',
+  });
+  const [createUserLoading, setCreateUserLoading] = useState(false);
+  const [createUserError, setCreateUserError] = useState('');
 
   // Modal state for Delete User Confirmation
   const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
@@ -414,6 +427,53 @@ export default function AdminDashboard() {
       });
     } finally {
       setDeleteUserLoading(false);
+    }
+  };
+
+  // Open Create User Modal
+  const handleOpenCreateUser = () => {
+    setCreateUserForm({
+      email: '',
+      password: '',
+      role: 'user',
+    });
+    setCreateUserError('');
+    setIsCreateUserModalOpen(true);
+  };
+
+  // Save Provisioned User (Admin only)
+  const handleSaveNewUser = async (e) => {
+    e.preventDefault();
+    setCreateUserError('');
+    setCreateUserLoading(true);
+
+    try {
+      const res = await api.post('/admin/users', createUserForm);
+      if (res.data?.success) {
+        setToast({ type: 'success', message: res.data.message || 'User account provisioned successfully!' });
+        setIsCreateUserModalOpen(false);
+        fetchAdminData();
+      }
+    } catch (err) {
+      setCreateUserError(err.response?.data?.message || 'Failed to create user account.');
+    } finally {
+      setCreateUserLoading(false);
+    }
+  };
+
+  // Toggle User Account Suspension (Admin only)
+  const handleToggleSuspend = async (targetUser) => {
+    try {
+      const res = await api.patch(`/admin/users/${targetUser.id}/suspend`);
+      if (res.data?.success) {
+        setToast({ type: 'success', message: res.data.message || 'User status updated successfully.' });
+        fetchAdminData();
+      }
+    } catch (err) {
+      setToast({
+        type: 'error',
+        message: err.response?.data?.message || 'Failed to update user suspension status.',
+      });
     }
   };
 
@@ -858,15 +918,25 @@ export default function AdminDashboard() {
         {/* Tab 3: Users Directory */}
         {activeTab === 'users' && (
           <div className="space-y-4">
-            <div className="relative max-w-md">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search users by email or role..."
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none transition-colors font-mono shadow-sm"
-              />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="relative max-w-md w-full">
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search users by email or role..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none transition-colors font-mono shadow-sm"
+                />
+              </div>
+
+              <button
+                onClick={handleOpenCreateUser}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shrink-0"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>+ Create User Account</span>
+              </button>
             </div>
 
             <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a]/90 overflow-hidden shadow-sm dark:shadow-xl transition-colors">
@@ -876,6 +946,7 @@ export default function AdminDashboard() {
                     <tr>
                       <th className="px-6 py-4">USER ACCOUNT</th>
                       <th className="px-6 py-4">ROLE</th>
+                      <th className="px-6 py-4">STATUS</th>
                       <th className="px-6 py-4">DOMAINS OWNED</th>
                       <th className="px-6 py-4">ACTIVE HOSTING SUBS</th>
                       <th className="px-6 py-4">REGISTERED DATE</th>
@@ -898,6 +969,19 @@ export default function AdminDashboard() {
                           <td className="px-6 py-4 align-middle">
                             <RoleBadge role={u.role} />
                           </td>
+                          <td className="px-6 py-4 align-middle">
+                            {u.is_suspended ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30">
+                                <Ban className="w-3.5 h-3.5 text-rose-500" />
+                                Suspended
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                Active
+                              </span>
+                            )}
+                          </td>
                           <td className="px-6 py-4 font-mono font-bold text-blue-600 dark:text-blue-300 align-middle">
                             {u.domain_count}
                           </td>
@@ -913,17 +997,41 @@ export default function AdminDashboard() {
                                 Current Admin
                               </span>
                             ) : (
-                              <button
-                                onClick={() => {
-                                  setUserToDelete(u);
-                                  setIsDeleteUserModalOpen(true);
-                                }}
-                                className="p-2 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all inline-flex items-center gap-1.5 text-xs font-bold"
-                                title={`Delete user ${u.email}`}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                <span className="hidden sm:inline">Delete User</span>
-                              </button>
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => handleToggleSuspend(u)}
+                                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1.5 ${
+                                    u.is_suspended
+                                      ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-950/40'
+                                      : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-950/40'
+                                  }`}
+                                  title={u.is_suspended ? 'Reactivate User Account' : 'Suspend User Account'}
+                                >
+                                  {u.is_suspended ? (
+                                    <>
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      <span>Reactivate</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ShieldAlert className="w-3.5 h-3.5" />
+                                      <span>Suspend</span>
+                                    </>
+                                  )}
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setUserToDelete(u);
+                                    setIsDeleteUserModalOpen(true);
+                                  }}
+                                  className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all inline-flex items-center gap-1 text-xs font-bold"
+                                  title={`Delete user ${u.email}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  <span className="hidden lg:inline">Delete</span>
+                                </button>
+                              </div>
                             )}
                           </td>
                         </tr>
@@ -1560,6 +1668,76 @@ export default function AdminDashboard() {
               >
                 {actionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Confirm &amp; Attach
+              </button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Modal: Admin Provision New User */}
+        <Modal
+          isOpen={isCreateUserModalOpen}
+          onClose={() => setIsCreateUserModalOpen(false)}
+          title="Create User Account (SuperAdmin)"
+        >
+          <form onSubmit={handleSaveNewUser} className="space-y-4">
+            {createUserError && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-500/40 text-rose-700 dark:text-rose-200 text-xs">
+                {createUserError}
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">User Email Address</label>
+              <input
+                type="email"
+                required
+                placeholder="client@company.com"
+                value={createUserForm.email}
+                onChange={(e) => setCreateUserForm({ ...createUserForm, email: e.target.value })}
+                className="w-full px-3.5 py-2 bg-slate-50 dark:bg-[#080c14] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none font-mono"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Temporary Password</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                placeholder="Minimum 6 characters"
+                value={createUserForm.password}
+                onChange={(e) => setCreateUserForm({ ...createUserForm, password: e.target.value })}
+                className="w-full px-3.5 py-2 bg-slate-50 dark:bg-[#080c14] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Account Authority / Role</label>
+              <select
+                value={createUserForm.role}
+                onChange={(e) => setCreateUserForm({ ...createUserForm, role: e.target.value })}
+                className="w-full px-3.5 py-2 bg-slate-50 dark:bg-[#080c14] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none font-medium"
+              >
+                <option value="user">Client Account (Read-Only Domain Viewer)</option>
+                <option value="admin">Platform Administrator (Full Management)</option>
+              </select>
+            </div>
+
+            <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsCreateUserModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={createUserLoading}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/25 flex items-center gap-1.5"
+              >
+                {createUserLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Provision User</span>
               </button>
             </div>
           </form>

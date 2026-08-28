@@ -193,15 +193,9 @@ export default function Navbar() {
               <div className="flex items-center gap-2">
                 <Link
                   href="/login"
-                  className="text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-1.5 transition-colors"
-                >
-                  Log in
-                </Link>
-                <Link
-                  href="/register"
                   className="px-4 py-1.5 rounded-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 transition-all hover:scale-[1.02]"
                 >
-                  Get Started
+                  Sign In
                 </Link>
               </div>
             )}
@@ -234,16 +228,9 @@ export default function Navbar() {
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex-1 py-2 text-center rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold"
-                >
-                  Log in
-                </Link>
-                <Link
-                  href="/register"
-                  onClick={() => setMobileMenuOpen(false)}
                   className="flex-1 py-2 text-center rounded-xl bg-blue-600 text-white font-bold"
                 >
-                  Register
+                  Sign In
                 </Link>
               </div>
             )}

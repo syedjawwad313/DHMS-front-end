@@ -20,6 +20,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { StatusBadge } from '../../components/Badge';
+import Modal from '../../components/Modal';
 import Toast from '../../components/Toast';
 
 export default function UserDashboard() {
@@ -35,6 +36,13 @@ export default function UserDashboard() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState(null);
+
+  // Attach Hosting Modal State
+  const [isAttachModalOpen, setIsAttachModalOpen] = useState(false);
+  const [attachDomain, setAttachDomain] = useState(null);
+  const [selectedPlanId, setSelectedPlanId] = useState('');
+  const [attachLoading, setAttachLoading] = useState(false);
+  const [attachError, setAttachError] = useState('');
 
   // Fetch user portfolio data (100% Viewer Access)
   const fetchData = useCallback(async () => {
@@ -74,6 +82,43 @@ export default function UserDashboard() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Open Attach Hosting Modal
+  const handleOpenAttach = (domain) => {
+    setAttachDomain(domain);
+    setSelectedPlanId(plans.length > 0 ? plans[0].id : '');
+    setAttachError('');
+    setIsAttachModalOpen(true);
+  };
+
+  // Submit Attach Hosting
+  const handleSaveAttach = async (e) => {
+    e.preventDefault();
+    setAttachError('');
+
+    if (!attachDomain || !selectedPlanId) {
+      setAttachError('Please select a hosting package.');
+      return;
+    }
+
+    setAttachLoading(true);
+    try {
+      const res = await api.post('/subscriptions', {
+        domain_id: attachDomain.id,
+        plan_id: selectedPlanId,
+      });
+
+      if (res.data?.success) {
+        setToast({ type: 'success', message: 'Hosting package linked to domain successfully!' });
+        setIsAttachModalOpen(false);
+        fetchData();
+      }
+    } catch (err) {
+      setAttachError(err.response?.data?.message || 'Failed to attach hosting package.');
+    } finally {
+      setAttachLoading(false);
+    }
+  };
 
   // Filtered domains list
   const filteredDomains = domains.filter((d) => {
@@ -268,19 +313,20 @@ export default function UserDashboard() {
                       <th className="px-6 py-4">EXPIRY DATE</th>
                       <th className="px-6 py-4">STATUS</th>
                       <th className="px-6 py-4">ATTACHED HOSTING</th>
+                      <th className="px-6 py-4 text-right">ACTIONS</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                     {loading ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                        <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
                           <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600 mb-2" />
                           Loading domain portfolio...
                         </td>
                       </tr>
                     ) : filteredDomains.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-16 text-center text-slate-400 space-y-2">
+                        <td colSpan={7} className="px-6 py-16 text-center text-slate-400 space-y-2">
                           <Globe className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
                           <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No domains assigned yet</p>
                           <p className="text-xs text-slate-500">
@@ -347,6 +393,16 @@ export default function UserDashboard() {
                               ) : (
                                 <span className="text-slate-400 dark:text-slate-500 text-[11px] font-mono">No Hosting Attached</span>
                               )}
+                            </td>
+                            <td className="px-6 py-4 text-right align-middle">
+                              <button
+                                onClick={() => handleOpenAttach(domain)}
+                                className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-500/20 inline-flex items-center gap-1.5 transition-all hover:scale-[1.02]"
+                                title="Attach / Switch Hosting Tier"
+                              >
+                                <Zap className="w-3.5 h-3.5 text-cyan-300" />
+                                <span>Attach Hosting</span>
+                              </button>
                             </td>
                           </tr>
                         );
@@ -478,6 +534,59 @@ export default function UserDashboard() {
             </div>
           </div>
         )}
+        {/* Modal: Attach Hosting to Domain for User */}
+        <Modal
+          isOpen={isAttachModalOpen}
+          onClose={() => setIsAttachModalOpen(false)}
+          title={`Attach Hosting: ${attachDomain?.domain_name}`}
+        >
+          <form onSubmit={handleSaveAttach} className="space-y-4">
+            {attachError && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-500/40 text-rose-700 dark:text-rose-200 text-xs">
+                {attachError}
+              </div>
+            )}
+
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#080c14] border border-slate-200 dark:border-slate-800 space-y-1 text-xs">
+              <span className="text-slate-500 dark:text-slate-400">Target Domain:</span>
+              <p className="font-mono font-bold text-slate-900 dark:text-white text-sm">{attachDomain?.domain_name}</p>
+              <span className="text-slate-500 text-[11px]">Registrar: {attachDomain?.registrar}</span>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Select Hosting Package</label>
+              <select
+                value={selectedPlanId}
+                onChange={(e) => setSelectedPlanId(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#080c14] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none"
+              >
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.plan_name} — ${parseFloat(p.price_monthly).toFixed(2)}/mo ({p.storage_gb}GB NVMe, {p.bandwidth_gb}GB Bandwidth)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsAttachModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={attachLoading}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/25 flex items-center gap-1.5"
+              >
+                {attachLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Attach Hosting</span>
+              </button>
+            </div>
+          </form>
+        </Modal>
       </div>
     </ProtectedRoute>
   );

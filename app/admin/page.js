@@ -30,7 +30,6 @@ import {
   ArrowRight,
   TrendingUp,
   Activity,
-  Zap,
   AlertTriangle,
   UserPlus,
   ShieldAlert,
@@ -91,13 +90,6 @@ export default function AdminDashboard() {
     hosting_cost: '5.00',
   });
 
-  // Modal state for Admin Attach Hosting
-  const [isAttachModalOpen, setIsAttachModalOpen] = useState(false);
-  const [attachDomain, setAttachDomain] = useState(null);
-  const [attachForm, setAttachForm] = useState({
-    domain_id: '',
-    plan_id: '',
-  });
 
   // Modal state for Provision New User
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
@@ -314,41 +306,6 @@ export default function AdminDashboard() {
     setIsDomainModalOpen(true);
   };
 
-  // Open Attach Hosting Modal for Admin
-  const handleOpenAttachDomain = (domain) => {
-    setAttachDomain(domain);
-    setAttachForm({
-      domain_id: domain.id,
-      plan_id: domain.plan_id || (plansList.length > 0 ? plansList[0].id : ''),
-    });
-    setFormError('');
-    setIsAttachModalOpen(true);
-  };
-
-  // Save Attach Hosting (Admin)
-  const handleSaveAttach = async (e) => {
-    e.preventDefault();
-    setFormError('');
-
-    if (!attachForm.domain_id || !attachForm.plan_id) {
-      setFormError('Please select a hosting tier to link.');
-      return;
-    }
-
-    setActionLoading(true);
-    try {
-      const res = await api.post('/subscriptions', attachForm);
-      if (res.data?.success) {
-        setToast({ type: 'success', message: 'Hosting package attached successfully by Administrator.' });
-        setIsAttachModalOpen(false);
-        fetchAdminData();
-      }
-    } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to attach hosting package.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
 
   // Save Admin Domain (Create or Update)
   const handleSaveDomain = async (e) => {
@@ -880,15 +837,6 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4 text-right align-middle">
                             <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => handleOpenAttachDomain(d)}
-                                className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-500/20 flex items-center gap-1.5 transition-all hover:scale-[1.02]"
-                                title="Attach / Switch Hosting Tier (SuperAdmin)"
-                              >
-                                <Zap className="w-3.5 h-3.5 text-cyan-300" />
-                                <span>Attach Hosting</span>
-                              </button>
-
                               <button
                                 onClick={() => handleOpenEditDomain(d)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -1496,7 +1444,7 @@ export default function AdminDashboard() {
                     <span className="text-[10px] text-slate-400 font-mono">Quick select</span>
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {['Hostinger', 'AWS', 'Vercel', 'DigitalOcean', 'Bluehost', 'Cloudflare'].map((host) => (
+                    {['Hostinger', 'AWS', 'DigitalOcean', 'Bluehost', 'Cloudflare'].map((host) => (
                       <button
                         key={host}
                         type="button"
@@ -1514,7 +1462,7 @@ export default function AdminDashboard() {
                   <input
                     type="text"
                     required={domainForm.has_hosting}
-                    placeholder="e.g. Hostinger, AWS, DigitalOcean, Vercel"
+                    placeholder="e.g. Hostinger, AWS, DigitalOcean, Cloudflare"
                     value={domainForm.hosting_registrar}
                     onChange={(e) => setDomainForm({ ...domainForm, hosting_registrar: e.target.value })}
                     className="w-full px-3.5 py-2 bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none"
@@ -1619,59 +1567,6 @@ export default function AdminDashboard() {
           </form>
         </Modal>
 
-        {/* Modal: Admin Attach Hosting to Domain */}
-        <Modal
-          isOpen={isAttachModalOpen}
-          onClose={() => setIsAttachModalOpen(false)}
-          title={`Attach Cloud Hosting: ${attachDomain?.domain_name}`}
-        >
-          <form onSubmit={handleSaveAttach} className="space-y-4">
-            {formError && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-500/40 text-rose-700 dark:text-rose-200 text-xs">
-                {formError}
-              </div>
-            )}
-
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#080c14] border border-slate-200 dark:border-slate-800 space-y-1 text-xs">
-              <span className="text-slate-500 dark:text-slate-400">Target Domain:</span>
-              <p className="font-mono font-bold text-slate-900 dark:text-white text-sm">{attachDomain?.domain_name}</p>
-              <span className="text-slate-500 text-[11px]">Owner: {attachDomain?.user_email}</span>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Select Hosting Package</label>
-              <select
-                value={attachForm.plan_id}
-                onChange={(e) => setAttachForm({ ...attachForm, plan_id: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#080c14] border border-slate-200 dark:border-slate-800 focus:border-blue-500 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none"
-              >
-                {plansList.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.plan_name} — ${parseFloat(p.price_monthly).toFixed(2)}/mo ({p.storage_gb}GB NVMe, {p.bandwidth_gb}GB Bandwidth)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setIsAttachModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={actionLoading}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/25 flex items-center gap-1.5"
-              >
-                {actionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Confirm &amp; Attach
-              </button>
-            </div>
-          </form>
-        </Modal>
 
         {/* Modal: Admin Provision New User */}
         <Modal
